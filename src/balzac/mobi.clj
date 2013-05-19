@@ -3,9 +3,11 @@
         [clojure.java.io]))
 
 
+;; Dummy codec to read pdb header size
 (defcodec pdb-header-size
   [:num-records :int16])
 
+;; PDB header
 (defcodec pdb-header
   [:name                (string :ascii :length 32)
    :attributes          :int16
@@ -26,6 +28,7 @@
                                   :prefix :int16)
    :gap-to-data         :int16])
 
+;; Palmdoc header
 (defcodec palmdoc-header
   [:compression (enum :int16 {:no-compression 1 :palmdoc-compression 2 :huff-cdic 17480})
    :unused1 :int16
@@ -35,6 +38,7 @@
    :encryption-type :int16
    :unused1 :int16])
 
+;; Enumeration of known mobi types
 (def mobi-type-enum
   {:mobipocket-book 2
    :palmdoc-book 3
@@ -51,6 +55,7 @@
    :text 517
    :html 518})
 
+;; mobi header
 (defcodec mobi-header
   [:identifier (string :ascii :length 4)
    :header-length :int32
@@ -104,6 +109,7 @@
    :indx-recod-offset :int32
   ])
 
+;; Enumeration of known exth record types
 (def exth-type-enum
   {:drm-server-id 1
    :drm-commerce-id 2
@@ -151,10 +157,12 @@
    :language 524
    :alignment 525})
 
+;; Dummy coded to read exth header length
 (defcodec exth-length
   [:id :int32
    :length :int32])
 
+;; exth header
 (defcodec exth-header
   [:identifier (string :ascii :length 4)
    :header-length :int32
@@ -162,14 +170,20 @@
                        :data (repeated :ubyte :prefix (prefix :int32 #(- % 8) #(+ % 8)))])
   ])
 
-(defn pdb-length [pdb-]
+(defn pdb-length
+  "Calculates length of PDB header."
+  [pdb-]
   (+ 80 (* 8 (second pdb-))))
 
-(defn pdb-to-map [pdb]
+(defn pdb-to-map
+  "Converts vector of PDB values to a map."
+  [pdb]
   (let [m (apply hash-map pdb)]
     (update-in m [:records] #(map (fn [x] (apply hash-map x)) %))))
 
-(defn parse-pdb-header [is]
+(defn parse-pdb-header
+  "Parses PDB header. What did you expect?"
+  [is]
   (let [buffer (byte-array 2)]
     (.mark is 80)
     (.skip is 76)
@@ -180,31 +194,47 @@
         (.read is buffer)
         (pdb-to-map (decode pdb-header buffer false)))))
 
-(defn parse-palmdoc-header [is]
+(defn parse-palmdoc-header
+  "Parses PalmDoc header."
+  [is]
   (let [buffer (byte-array 16)]
     (.read is buffer)
     (apply hash-map (decode palmdoc-header buffer))))
 
-(defn parse-mobi-header [is]
+(defn parse-mobi-header
+  "Parses Mobi header."
+  [is]
   (let [buffer (byte-array 232)]
     (.read is buffer)
     (apply hash-map (decode mobi-header buffer))))
 
-(defn parse-exth-header [is]
+(defn get-padding-for
+  "Calculates padding for given header length."
+  [length]
+  (let [m (mod length 4)]
+    (if (= m 0) 0 (- 4 m))))
+
+(defn parse-exth-header
+  "Parses EXTH header and records."
+  [is]
   (let [buffer (byte-array 8)]
     (.mark is 8)
     (.read is buffer)
     (let [exth- (decode exth-length buffer false)
-          buffer (byte-array (nth exth- 3))]
+          length (nth exth- 3)
+          buffer (byte-array (+ length (get-padding-for length)))]
       (.reset is)
       (.read is buffer)
-      (apply hash-map (decode exth-header buffer)))))
+      (apply hash-map (decode exth-header buffer false)))))
 
-
-(defn has-exth? [exth-flags]
+(defn has-exth?
+  "Checks whether EXTH flags indicate there is a EXTH header."
+  [exth-flags]
   (bit-and 0x40 exth-flags))
 
-(defn mobi [is]
+(defn mobi
+  "Parses all headers of a .mobi file."
+  [is]
   (let [pdb (parse-pdb-header is)
         pdoc (parse-palmdoc-header is)
         mobih (parse-mobi-header is)
