@@ -1,6 +1,7 @@
 (ns balzac.mobi
   (:use [gloss core io]
-        [clojure.java.io]))
+        [clojure.java.io])
+  (:require [balzac.exth :as exth]))
 
 
 ;; Dummy codec to read pdb header size
@@ -109,54 +110,6 @@
    :indx-recod-offset :int32
   ])
 
-;; Enumeration of known exth record types
-(def exth-type-enum
-  {:drm-server-id 1
-   :drm-commerce-id 2
-   :drm_ebookbase_book_id 3
-   :author 100
-   :publisher 101
-   :imprint 102
-   :description 103
-   :isbn 104
-   :subject 105
-   :publishing-date 106
-   :review 107
-   :contributor 108
-   :rights 109
-   :subjct-code 110
-   :type 111
-   :source 112
-   :asin 113
-   :version-number 114
-   :is-sample 115
-   :start-reading 116
-   :adult 117
-   :retail-price 118
-   :retail-price-currency 119
-   :kf8-boundary-offset 121
-   :count-of-resources 125
-   :kf8-cover-uri 129
-   :dictionary-short-name 200
-   :cover-offset 201
-   :thumb-offset 202
-   :has-fake-cover 203
-   :creator-software 204
-   :creator-major-version 205
-   :creator-minor-version 206
-   :creator-build-number 207
-   :watermark 208
-   :tamper-proof-keys 209
-   :font-signature 300
-   :clipping-limit 401
-   :publisher-limit 402
-   :tts-flag 404
-   :cde-type 501
-   :last-update-time 502
-   :updated-title 503
-   :language 524
-   :alignment 525})
-
 ;; Dummy coded to read exth header length
 (defcodec exth-length
   [:id :int32
@@ -166,7 +119,7 @@
 (defcodec exth-header
   [:identifier (string :ascii :length 4)
    :header-length :int32
-   :records (repeated [:type (enum :int32 exth-type-enum)
+   :records (repeated [:type (enum :int32 exth/exth-type-enum)
                        :data (repeated :ubyte :prefix (prefix :int32 #(- % 8) #(+ % 8)))])
   ])
 
@@ -214,6 +167,12 @@
   (let [m (mod length 4)]
     (if (= m 0) 0 (- 4 m))))
 
+(defn exth-to-map
+  "Converts vector of EXTH values to a map and parses record data for known types."
+  [exth]
+  (let [m (apply hash-map exth)]
+    (update-in m [:records] #(map exth/parse-record %))))
+
 (defn parse-exth-header
   "Parses EXTH header and records."
   [is]
@@ -225,7 +184,7 @@
           buffer (byte-array (+ length (get-padding-for length)))]
       (.reset is)
       (.read is buffer)
-      (apply hash-map (decode exth-header buffer false)))))
+      (exth-to-map (decode exth-header buffer false)))))
 
 (defn has-exth?
   "Checks whether EXTH flags indicate there is a EXTH header."
@@ -239,7 +198,7 @@
         pdoc (parse-palmdoc-header is)
         mobih (parse-mobi-header is)
         exth (if (has-exth? (:exth-flags mobih)) (parse-exth-header is))]
-    {:pdb pdb :palmdoc pdoc :mobi mobih :exth exth}))
+    {:type :mobi :pdb pdb :palmdoc pdoc :mobi mobih :exth exth}))
 
 
 ;; Helpers for REPL
