@@ -1,6 +1,5 @@
 (ns balzac.mobi
   (:use [gloss core io]
-        [clojure.java.io]
         [balzac.proto])
   (:require [balzac.exth :as exth]))
 
@@ -203,6 +202,14 @@
   (language [book] (read-property book :language))
   (publication-date [book] (read-property book :publishing-date)))
 
+(defn is-mobi? [is]
+  (.mark is 1024)
+  (.skip is 60)
+  (let [ar (byte-array 8)]
+    (.read is ar)
+    (.reset is)
+    (= "BOOKMOBI" (String. ar))))
+
 (defn mobi
   "Parses all headers of a .mobi file."
   [is]
@@ -211,9 +218,3 @@
         mobih (parse-mobi-header is)
         exth (if (has-exth? (:exth-flags mobih)) (parse-exth-header is))]
     (Mobi. pdb pdoc mobih exth)))
-
-
-;; Helpers for REPL
-
-(defn is1m [] (input-stream "/Users/tomo/Dropbox/książki/Pijani Bogiem.mobi"))
-(defn is2m [] (input-stream "/Users/tomo/Dropbox/książki/Czarny_Horyzont.mobi"))

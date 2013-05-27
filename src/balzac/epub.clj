@@ -1,6 +1,5 @@
 (ns balzac.epub
-  (:use [clojure.java.io]
-        [balzac.proto])
+  (:use [balzac.proto])
   (:import [nl.siegmann.epublib.epub EpubReader]
            [nl.siegmann.epublib.domain Identifier]))
 
@@ -22,9 +21,3 @@
   (let [er (EpubReader.)
         book (.readEpub er is)]
     (Epub. (.getMetadata book))))
-
-
-;; Helpers for REPL
-
-(defn is1e [] (input-stream "/Users/tomo/Desktop/epub/Metro_2033.epub"))
-(defn is2e [] (input-stream "/Users/tomo/Desktop/epub/Real_World_Haskell.epub"))
