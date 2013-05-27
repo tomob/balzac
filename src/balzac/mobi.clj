@@ -1,6 +1,7 @@
 (ns balzac.mobi
   (:use [gloss core io]
-        [clojure.java.io])
+        [clojure.java.io]
+        [balzac.proto])
   (:require [balzac.exth :as exth]))
 
 
@@ -191,6 +192,17 @@
   [exth-flags]
   (bit-and 0x40 exth-flags))
 
+(defn read-property [m property]
+  (:data (first (filter #(= property (:type %)) (get-in m [:exth :records])))))
+
+(defrecord Mobi [pdb pdoc mobi exth]
+  Book
+  (authors [book] (seq [(read-property book :author)]))
+  (title [book] (read-property book :updated-title))
+  (isbn [book] (read-property book :isbn))
+  (language [book] (read-property book :language))
+  (publication-date [book] (read-property book :publishing-date)))
+
 (defn mobi
   "Parses all headers of a .mobi file."
   [is]
@@ -198,17 +210,10 @@
         pdoc (parse-palmdoc-header is)
         mobih (parse-mobi-header is)
         exth (if (has-exth? (:exth-flags mobih)) (parse-exth-header is))]
-    {:type :mobi :pdb pdb :palmdoc pdoc :mobi mobih :exth exth}))
+    (Mobi. pdb pdoc mobih exth)))
 
 
 ;; Helpers for REPL
 
-(defn is [] (input-stream "/Users/tomo/Dropbox/książki/Pijani Bogiem.mobi"))
-
-(defn gimme-buffer
-  ([size is]
-    (let [buffer (byte-array size)]
-      (.read is buffer)
-      buffer))
-  ([size]
-    (gimme-buffer size (is))))
+(defn is1m [] (input-stream "/Users/tomo/Dropbox/książki/Pijani Bogiem.mobi"))
+(defn is2m [] (input-stream "/Users/tomo/Dropbox/książki/Czarny_Horyzont.mobi"))
