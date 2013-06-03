@@ -1,6 +1,6 @@
 (defproject balzac "0.1.0"
   :description "Read ebook metadata"
-  :url "http://example.com/FIXME"
+  :url "https://github.com/tomob/balzac"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.3.0"]
