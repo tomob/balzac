@@ -171,13 +171,13 @@
 
 (defn exth-to-map
   "Converts vector of EXTH values to a map and parses record data for known types."
-  [exth]
+  [exth encoding]
   (let [m (apply hash-map exth)]
-    (update-in m [:records] #(map exth/parse-record %))))
+    (update-in m [:records] #(map (fn [x] (exth/parse-record (concat x [:encoding encoding]))) %))))
 
 (defn parse-exth-header
   "Parses EXTH header and records."
-  [is]
+  [is encoding]
   (let [buffer (byte-array 8)]
     (.mark is 8)
     (.read is buffer)
@@ -186,7 +186,7 @@
           buffer (byte-array (+ length (get-padding-for length)))]
       (.reset is)
       (.read is buffer)
-      (exth-to-map (decode exth-header buffer false)))))
+      (exth-to-map (decode exth-header buffer false) encoding))))
 
 (defn has-exth?
   "Checks whether EXTH flags indicate there is a EXTH header."
@@ -236,6 +236,6 @@
   (let [pdb (parse-pdb-header is)
         pdoc (parse-palmdoc-header is)
         mobih (parse-mobi-header is)
-        exth (if (has-exth? (:exth-flags mobih)) (parse-exth-header is))
+        exth (if (has-exth? (:exth-flags mobih)) (parse-exth-header is ((:text-encoding mobih) encoding)))
         name (read-name is mobih (mobi-header-size exth))]
     (Mobi. pdb pdoc mobih exth name)))

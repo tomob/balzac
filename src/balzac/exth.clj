@@ -54,11 +54,19 @@
   [v]
   (reduce (fn [acc val] (+ val (* 256 acc))) 0 v))
 
+(defn ubyte-to-byte
+  "Converts unsigned byte to signed byte."
+  [b]
+  (if (< b 128) b (- b 256)))
+
 (defn parse-int [record]
   (update-in record [:data] vec-to-int))
 
 (defn- parse-string [record]
-  (update-in record [:data] #(join (map char %))))
+  (letfn [(vector-of-bytes [v]
+            (apply conj (vector-of :byte) (map ubyte-to-byte v)))]
+    (update-in record [:data]
+      #(String. (byte-array (vector-of-bytes %)) (:encoding record)))))
 
 (def strings [:author :publisher :imprint :decription :isbn :subject :publishing-date :review :contributor :rights
               :subjct-code :type :source :asin :version-number :adult :retail-price :retail-price-currency
