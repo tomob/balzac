@@ -37,7 +37,7 @@
    :record-count :int16
    :record-size :int16
    :encryption-type :int16
-   :unused1 :int16])
+   :unused2 :int16])
 
 ;; Enumeration of known mobi types
 (def mobi-type-enum
