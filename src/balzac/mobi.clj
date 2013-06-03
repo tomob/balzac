@@ -123,6 +123,8 @@
                        :data (repeated :ubyte :prefix (prefix :int32 #(- % 8) #(+ % 8)))])
   ])
 
+(def encoding {:utf8 "UTF-8" :cp1252 "Cp1252"})
+
 (defn pdb-length
   "Calculates length of PDB header."
   [pdb-]
@@ -191,13 +193,31 @@
   [exth-flags]
   (bit-and 0x40 exth-flags))
 
+(defn mobi-header-size
+  "Calculates length of the palmdoc+mobi+exth headers."
+  [exth]
+  (+ 16  ;; PalmDOC
+     232 ;; MOBI
+     (:header-length exth)
+     (get-padding-for (:header-length exth))))
+
+(defn read-name
+  "Reads full name of the book."
+  [is mobi header-length]
+  (let [name-offset (:full-name-offset mobi)
+        name (byte-array (:full-name-length mobi))]
+    (if (not= name-offset header-length)
+      (.skip is (- name-offset header-length)))
+    (.read is name)
+    (String. name ((:text-encoding mobi) encoding))))
+
 (defn read-property [m property]
   (:data (first (filter #(= property (:type %)) (get-in m [:exth :records])))))
 
-(defrecord Mobi [pdb pdoc mobi exth]
+(defrecord Mobi [pdb pdoc mobi exth name]
   Book
   (authors [book] (seq [(read-property book :author)]))
-  (title [book] (read-property book :updated-title))
+  (title [book] name)
   (isbn [book] (read-property book :isbn))
   (language [book] (read-property book :language))
   (publication-date [book] (read-property book :publishing-date)))
@@ -216,5 +236,6 @@
   (let [pdb (parse-pdb-header is)
         pdoc (parse-palmdoc-header is)
         mobih (parse-mobi-header is)
-        exth (if (has-exth? (:exth-flags mobih)) (parse-exth-header is))]
-    (Mobi. pdb pdoc mobih exth)))
+        exth (if (has-exth? (:exth-flags mobih)) (parse-exth-header is))
+        name (read-name is mobih (mobi-header-size exth))]
+    (Mobi. pdb pdoc mobih exth name)))
