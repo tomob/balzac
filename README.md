@@ -10,8 +10,10 @@ To add Balzac as a dependency to your Leiningen project, use:
 
 ## Usage
 
+```clojure
 (def is (input-stream "/path/to/file"))
 (book is)
+```
 
 
 ## License
