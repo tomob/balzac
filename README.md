@@ -6,7 +6,7 @@ A Clojure library to read epub/mobi metadata.
 
 To add Balzac as a dependency to your Leiningen project, use:
 
-[balzac "0.1.0"]
+[balzac "0.1.1"]
 
 ## Usage
 

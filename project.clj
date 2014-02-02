@@ -1,4 +1,4 @@
-(defproject balzac "0.1.0"
+(defproject balzac "0.1.1"
   :description "Read ebook metadata"
   :url "https://github.com/tomob/balzac"
   :license {:name "Eclipse Public License"

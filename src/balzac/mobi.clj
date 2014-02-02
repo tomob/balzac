@@ -56,6 +56,11 @@
    :text 517
    :html 518})
 
+;; Dummy mobi header - to calculate length
+(defcodec mobi-header-length
+  [:identifier (string :ascii :length 4)
+   :header-length :int32])
+
 ;; mobi header
 (defcodec mobi-header
   [:identifier (string :ascii :length 4)
@@ -159,9 +164,15 @@
 (defn parse-mobi-header
   "Parses Mobi header."
   [is]
-  (let [buffer (byte-array 232)]
+  (let [buffer (byte-array 8)]
+    (.mark is 8)
     (.read is buffer)
-    (apply hash-map (decode mobi-header buffer))))
+    (let [dummy-header (apply hash-map (decode mobi-header-length buffer))
+          buffer (byte-array 232)]
+      (.reset is)
+      (.read is buffer)
+      (.skip is (- (:header-length dummy-header) 232))
+      (apply hash-map (decode mobi-header buffer)))))
 
 (defn get-padding-for
   "Calculates padding for given header length."
@@ -195,9 +206,9 @@
 
 (defn mobi-header-size
   "Calculates length of the palmdoc+mobi+exth headers."
-  [exth]
+  [mobi exth]
   (+ 16  ;; PalmDOC
-     232 ;; MOBI
+     (:header-length mobi)
      (:header-length exth)
      (get-padding-for (:header-length exth))))
 
@@ -237,5 +248,5 @@
         pdoc (parse-palmdoc-header is)
         mobih (parse-mobi-header is)
         exth (if (has-exth? (:exth-flags mobih)) (parse-exth-header is ((:text-encoding mobih) encoding)))
-        name (read-name is mobih (mobi-header-size exth))]
+        name (read-name is mobih (mobi-header-size mobih exth))]
     (Mobi. pdb pdoc mobih exth name)))
